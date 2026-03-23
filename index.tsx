@@ -74,49 +74,89 @@ export class GdmLiveAudio extends LitElement {
 
     /* Chat View */
     .chat-header {
-      padding: 20px;
+      padding: 16px;
       font-weight: 500;
-      font-size: 1rem;
+      font-size: 0.9rem;
       text-align: center;
       letter-spacing: 1px;
       border-bottom: 1px solid var(--border-color);
       background: rgba(5, 5, 5, 0.85);
       backdrop-filter: blur(12px);
       z-index: 10;
+      width: 100%;
+    }
+
+    .chat-header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .chat-header {
+        padding: 20px;
+        font-size: 1rem;
+      }
     }
 
     .chat-content {
       flex-grow: 1;
-      padding: 20px;
+      padding: 16px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .chat-content {
+        padding: 20px;
+      }
     }
 
     .welcome-msg {
       color: var(--text-dim);
       text-align: center;
-      margin-top: 35vh;
+      margin-top: 30vh;
+      padding: 0 40px;
       font-weight: 300;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      line-height: 1.5;
       letter-spacing: 0.5px;
+    }
+
+    @media (min-width: 768px) {
+      .welcome-msg {
+        margin-top: 35vh;
+        font-size: 1.1rem;
+      }
     }
 
     /* The Dock */
     .input-dock-container {
-      padding: 15px 20px 25px 20px;
+      padding: 12px 16px 20px 16px;
       background: linear-gradient(to top, var(--bg-color) 80%, transparent);
+    }
+
+    @media (min-width: 768px) {
+      .input-dock-container {
+        padding: 15px 20px 25px 20px;
+      }
     }
 
     .input-dock {
       background: var(--surface);
-      padding: 8px 10px;
+      padding: 6px 8px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      border-radius: 30px;
+      gap: 8px;
+      border-radius: 32px;
       border: 1px solid #2a2a2a;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
     }
 
     .input-field {
@@ -141,8 +181,8 @@ export class GdmLiveAudio extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       transition: all 0.2s ease;
       flex-shrink: 0;
@@ -196,8 +236,8 @@ export class GdmLiveAudio extends LitElement {
     }
 
     .sphere {
-      width: 200px;
-      height: 200px;
+      width: 160px;
+      height: 160px;
       background: radial-gradient(circle at 30% 30%, #333, #050505);
       border-radius: 50%;
       box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.05),
@@ -207,15 +247,29 @@ export class GdmLiveAudio extends LitElement {
       z-index: 2;
     }
 
+    @media (min-width: 768px) {
+      .sphere {
+        width: 200px;
+        height: 200px;
+      }
+    }
+
     .ring {
       position: absolute;
-      width: 200px;
-      height: 200px;
+      width: 160px;
+      height: 160px;
       border-radius: 50%;
       border: 1px solid var(--primary-accent);
       opacity: 0.5;
       animation: ripple 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 1;
+    }
+
+    @media (min-width: 768px) {
+      .ring {
+        width: 200px;
+        height: 200px;
+      }
     }
 
     @keyframes breathe {
@@ -244,14 +298,22 @@ export class GdmLiveAudio extends LitElement {
     }
 
     .back-text {
-      margin-top: 60px;
+      margin-top: 40px;
       color: var(--primary-accent);
-      letter-spacing: 4px;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 500;
       opacity: 0.8;
       animation: pulse-text 2s infinite ease-in-out;
+    }
+
+    @media (min-width: 768px) {
+      .back-text {
+        margin-top: 60px;
+        letter-spacing: 4px;
+        font-size: 0.75rem;
+      }
     }
 
     @keyframes pulse-text {
@@ -988,7 +1050,9 @@ Act accordingly at all times.`,
 
       <!-- Chat View -->
       <div id="chat-view" class="view ${this.currentView === 'chat' ? 'visible' : 'hidden'}">
-        <div class="chat-header">MAX 2.0</div>
+        <div class="chat-header">
+          <div class="chat-header-inner">MAX 2.0</div>
+        </div>
 
         <div class="chat-content">
           ${this.messages.length === 0
