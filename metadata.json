@@ -1,0 +1,8 @@
+{
+  "name": "Maximus Chief-of-Staff",
+  "description": "The trusted right-hand AI presence beside Master E, overseeing the full flow of development activity.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}
