@@ -6,7 +6,7 @@
 
 import {GoogleGenAI, LiveServerMessage, Modality, Session} from '@google/genai';
 import {LitElement, css, html} from 'lit';
-import {customElement, state} from 'lit/decorators.js';
+import {customElement, state, query} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
 import './visual-3d';
 
@@ -18,6 +18,9 @@ export class GdmLiveAudio extends LitElement {
   @state() currentView: 'chat' | 'voice' = 'chat';
   @state() messages: {role: 'user' | 'model'; text: string}[] = [];
   @state() inputText = '';
+  @state() isSTTActive = false;
+
+  @query('#file-input') fileInput!: HTMLInputElement;
 
   private client: GoogleGenAI;
   private session: Session;
@@ -51,6 +54,7 @@ export class GdmLiveAudio extends LitElement {
         sans-serif;
       overflow: hidden;
       -webkit-font-smoothing: antialiased;
+      touch-action: manipulation;
     }
 
     .view {
@@ -87,15 +91,8 @@ export class GdmLiveAudio extends LitElement {
     }
 
     .chat-header-inner {
-      max-width: 800px;
+      max-width: 600px;
       margin: 0 auto;
-    }
-
-    @media (min-width: 768px) {
-      .chat-header {
-        padding: 20px;
-        font-size: 1rem;
-      }
     }
 
     .chat-content {
@@ -105,14 +102,8 @@ export class GdmLiveAudio extends LitElement {
       display: flex;
       flex-direction: column;
       width: 100%;
-      max-width: 800px;
+      max-width: 600px;
       margin: 0 auto;
-    }
-
-    @media (min-width: 768px) {
-      .chat-content {
-        padding: 20px;
-      }
     }
 
     .welcome-msg {
@@ -126,23 +117,10 @@ export class GdmLiveAudio extends LitElement {
       letter-spacing: 0.5px;
     }
 
-    @media (min-width: 768px) {
-      .welcome-msg {
-        margin-top: 35vh;
-        font-size: 1.1rem;
-      }
-    }
-
     /* The Dock */
     .input-dock-container {
       padding: 12px 16px 20px 16px;
       background: linear-gradient(to top, var(--bg-color) 80%, transparent);
-    }
-
-    @media (min-width: 768px) {
-      .input-dock-container {
-        padding: 15px 20px 25px 20px;
-      }
     }
 
     .input-dock {
@@ -155,7 +133,7 @@ export class GdmLiveAudio extends LitElement {
       border: 1px solid #2a2a2a;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
       width: 100%;
-      max-width: 800px;
+      max-width: 600px;
       margin: 0 auto;
     }
 
@@ -247,13 +225,6 @@ export class GdmLiveAudio extends LitElement {
       z-index: 2;
     }
 
-    @media (min-width: 768px) {
-      .sphere {
-        width: 200px;
-        height: 200px;
-      }
-    }
-
     .ring {
       position: absolute;
       width: 160px;
@@ -263,13 +234,6 @@ export class GdmLiveAudio extends LitElement {
       opacity: 0.5;
       animation: ripple 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 1;
-    }
-
-    @media (min-width: 768px) {
-      .ring {
-        width: 200px;
-        height: 200px;
-      }
     }
 
     @keyframes breathe {
@@ -308,14 +272,6 @@ export class GdmLiveAudio extends LitElement {
       animation: pulse-text 2s infinite ease-in-out;
     }
 
-    @media (min-width: 768px) {
-      .back-text {
-        margin-top: 60px;
-        letter-spacing: 4px;
-        font-size: 0.75rem;
-      }
-    }
-
     @keyframes pulse-text {
       0%,
       100% {
@@ -346,6 +302,47 @@ export class GdmLiveAudio extends LitElement {
       height: 100%;
       opacity: 0.3;
       pointer-events: none;
+    }
+
+    .voice-control-container {
+      position: absolute;
+      bottom: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .voice-toggle-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      color: var(--primary-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .voice-toggle-btn.active {
+      background: var(--primary-accent);
+      color: var(--bg-color);
+      box-shadow: 0 0 30px var(--primary-glow);
+      border-color: transparent;
+    }
+
+    .voice-toggle-btn svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    #file-input {
+      display: none;
     }
   `;
 
@@ -418,11 +415,11 @@ export class GdmLiveAudio extends LitElement {
               }
             }
 
-            const transcription = message.serverContent?.modelTurn?.parts?.find(
-              (p) => p.text,
-            );
-            if (transcription && transcription.text) {
-              // Already handled above in the loop, but just in case
+            if ((message as any).serverContent?.inputAudioTranscription?.text) {
+              this.messages = [
+                ...this.messages,
+                {role: 'user', text: (message as any).serverContent.inputAudioTranscription.text},
+              ];
             }
 
             const interrupted = message.serverContent?.interrupted;
@@ -447,6 +444,7 @@ export class GdmLiveAudio extends LitElement {
             voiceConfig: {prebuiltVoiceConfig: {voiceName: 'Charon'}},
           },
           outputAudioTranscription: {},
+          inputAudioTranscription: {},
           systemInstruction: `You are Maximus Chief-of-Staff, a specialized AI system created by Eburon AI under the direction of Master E.
 
 You are the closest executive assistant, operational overseer, conversational secretary, and reporting voice assigned directly to Master E.
@@ -1014,11 +1012,89 @@ Act accordingly at all times.`,
 
   private switchView(view: 'chat' | 'voice') {
     this.currentView = view;
-    if (view === 'voice') {
-      this.startRecording();
-    } else {
+  }
+
+  private toggleVoice() {
+    if (this.isRecording) {
       this.stopRecording();
+    } else {
+      this.startRecording();
     }
+  }
+
+  private handleFileClick() {
+    this.fileInput.click();
+  }
+
+  private async handleFileChange(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = (reader.result as string).split(',')[1];
+      const mimeType = file.type;
+
+      try {
+        // Send as video part for images/files in Live session
+        this.session.sendRealtimeInput({
+          video: {
+            data: base64Data,
+            mimeType: mimeType,
+          },
+        });
+        this.messages = [
+          ...this.messages,
+          {role: 'user', text: `[Attached File: ${file.name}]`},
+        ];
+      } catch (err) {
+        console.error('Error sending file:', err);
+        this.updateError('Failed to send file.');
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    (e.target as HTMLInputElement).value = '';
+  }
+
+  private startSTT() {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      this.updateError('Speech Recognition not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      this.isSTTActive = true;
+      this.updateStatus('Listening for dictation...');
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map((result: any) => result.transcript)
+        .join('');
+      this.inputText = transcript;
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('STT Error:', event.error);
+      this.isSTTActive = false;
+      this.updateStatus('STT Error: ' + event.error);
+    };
+
+    recognition.onend = () => {
+      this.isSTTActive = false;
+      this.updateStatus('Dictation ended.');
+    };
+
+    recognition.start();
   }
 
   private handleInputChange(e: Event) {
@@ -1077,8 +1153,16 @@ Act accordingly at all times.`,
         <!-- Bottom Dock Area -->
         <div class="input-dock-container">
           <div class="input-dock">
+            <!-- Hidden File Input -->
+            <input
+              type="file"
+              id="file-input"
+              @change=${this.handleFileChange}
+              accept="image/*,application/pdf,text/*"
+            />
+
             <!-- Plus/Upload Icon -->
-            <button class="btn" title="Add Attachment">
+            <button class="btn" title="Add Attachment" @click=${this.handleFileClick}>
               <svg class="icon" viewBox="0 0 24 24">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
               </svg>
@@ -1095,7 +1179,7 @@ Act accordingly at all times.`,
                 e.key === 'Enter' && this.sendMessage()}
             />
 
-            <!-- NEW: Audio/Voice Agent Mode Icon (Audio Waveform) -->
+            <!-- Voice Agent Mode Icon -->
             <button
               class="btn voice-agent-btn"
               @click=${() => this.switchView('voice')}
@@ -1111,8 +1195,12 @@ Act accordingly at all times.`,
               </svg>
             </button>
 
-            <!-- EXISTING: Mic Icon (For speech-to-text dictation into the chat) -->
-            <button class="btn" title="Dictate Prompt">
+            <!-- Mic Icon (STT) -->
+            <button
+              class="btn ${this.isSTTActive ? 'voice-agent-btn' : ''}"
+              title="Dictate Prompt"
+              @click=${this.startSTT}
+            >
               <svg class="icon" viewBox="0 0 24 24">
                 <path
                   d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"
@@ -1134,19 +1222,35 @@ Act accordingly at all times.`,
       <div
         id="voice-view"
         class="view ${this.currentView === 'voice' ? 'visible' : 'hidden'}"
-        @click=${() => this.switchView('chat')}
       >
-        <div class="visualizer-overlay">
+        <div class="visualizer-overlay" @click=${() => this.switchView('chat')}>
           <gdm-live-audio-visuals-3d
             .inputNode=${this.inputNode}
             .outputNode=${this.outputNode}
           ></gdm-live-audio-visuals-3d>
         </div>
-        <div class="sphere-container">
+        <div class="sphere-container" @click=${() => this.switchView('chat')}>
           <div class="ring"></div>
           <div class="sphere"></div>
         </div>
-        <div class="back-text">${this.isRecording ? 'Listening...' : 'Connecting...'}</div>
+
+        <div class="voice-control-container">
+          <button
+            class="voice-toggle-btn ${this.isRecording ? 'active' : ''}"
+            @click=${this.toggleVoice}
+          >
+            ${this.isRecording
+              ? html`<svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 6h12v12H6z" />
+                </svg>`
+              : html`<svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>`}
+          </button>
+          <div class="back-text">
+            ${this.isRecording ? 'Listening...' : 'Tap to Start'}
+          </div>
+        </div>
       </div>
     `;
   }
